@@ -6,6 +6,17 @@
 
 package com.microsoft.jenkins.kubernetes.credentials;
 
+import java.io.OutputStream;
+import java.util.Collections;
+
+import javax.annotation.Nonnull;
+
+import org.apache.commons.lang3.StringUtils;
+import org.kohsuke.stapler.AncestorInPath;
+import org.kohsuke.stapler.DataBoundConstructor;
+import org.kohsuke.stapler.DataBoundSetter;
+import org.kohsuke.stapler.QueryParameter;
+
 import com.cloudbees.jenkins.plugins.sshcredentials.SSHUserPrivateKey;
 import com.cloudbees.plugins.credentials.CredentialsMatchers;
 import com.cloudbees.plugins.credentials.CredentialsProvider;
@@ -17,6 +28,7 @@ import com.microsoft.jenkins.azurecommons.remote.SSHClient;
 import com.microsoft.jenkins.kubernetes.KubernetesClientWrapper;
 import com.microsoft.jenkins.kubernetes.Messages;
 import com.microsoft.jenkins.kubernetes.util.Constants;
+
 import hudson.Extension;
 import hudson.FilePath;
 import hudson.model.AbstractDescribableImpl;
@@ -25,30 +37,20 @@ import hudson.model.Item;
 import hudson.security.ACL;
 import hudson.util.FormValidation;
 import hudson.util.ListBoxModel;
-import org.apache.commons.lang3.StringUtils;
-import org.kohsuke.stapler.AncestorInPath;
-import org.kohsuke.stapler.DataBoundConstructor;
-import org.kohsuke.stapler.DataBoundSetter;
-import org.kohsuke.stapler.QueryParameter;
-
-import javax.annotation.Nonnull;
-import java.io.OutputStream;
-import java.util.Collections;
 
 /**
  * @deprecated Use {@link KubeconfigCredentials}.
  */
 @Deprecated
 public class SSHCredentials
-        extends AbstractDescribableImpl<SSHCredentials>
-        implements ClientWrapperFactory.Builder {
+                            extends AbstractDescribableImpl<SSHCredentials>
+                            implements ClientWrapperFactory.Builder {
 
     private String sshServer;
     private String sshCredentialsId;
 
     @DataBoundConstructor
-    public SSHCredentials() {
-    }
+    public SSHCredentials() {}
 
     public String getSshServer() {
         return sshServer;
@@ -71,12 +73,12 @@ public class SSHCredentials
     @Nonnull
     public StandardUsernameCredentials getSshCredentials(Item owner) {
         StandardUsernameCredentials creds = CredentialsMatchers.firstOrNull(
-                CredentialsProvider.lookupCredentials(
-                        StandardUsernameCredentials.class,
-                        owner,
-                        ACL.SYSTEM,
-                        Collections.<DomainRequirement>emptyList()),
-                CredentialsMatchers.withId(getSshCredentialsId()));
+            CredentialsProvider.lookupCredentials(
+                StandardUsernameCredentials.class,
+                owner,
+                ACL.SYSTEM,
+                Collections.<DomainRequirement> emptyList()),
+            CredentialsMatchers.withId(getSshCredentialsId()));
         if (creds == null) {
             throw new IllegalStateException("Cannot find SSH credentials with ID " + getSshCredentialsId());
         }
@@ -130,10 +132,10 @@ public class SSHCredentials
     }
 
     private static class ClientWrapperFactoryImpl implements ClientWrapperFactory {
-        private static final long serialVersionUID = 1L;
+        private static final long                 serialVersionUID = 1L;
 
-        private final String host;
-        private final int port;
+        private final String                      host;
+        private final int                         port;
         private final StandardUsernameCredentials credentials;
 
         ClientWrapperFactoryImpl(String host, int port, StandardUsernameCredentials credentials) {

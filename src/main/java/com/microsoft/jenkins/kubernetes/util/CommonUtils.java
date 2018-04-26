@@ -6,27 +6,29 @@
 
 package com.microsoft.jenkins.kubernetes.util;
 
-import com.microsoft.jenkins.kubernetes.Messages;
-import hudson.Util;
-import hudson.util.VariableResolver;
-import org.apache.commons.io.IOUtils;
-
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Random;
 
+import org.apache.commons.io.IOUtils;
+
+import com.microsoft.jenkins.kubernetes.Messages;
+
+import hudson.Util;
+import hudson.util.VariableResolver;
+
 public final class CommonUtils {
-    private static final char[] DIGITS;
-    private static final char[] DIGITS_ASCII_LOWERCASE;
-    private static final char[] DIGITS_ASCII_LETTERS;
+    private static final char[]              DIGITS;
+    private static final char[]              DIGITS_ASCII_LOWERCASE;
+    private static final char[]              DIGITS_ASCII_LETTERS;
 
     private static final ThreadLocal<Random> THREAD_LOCAL_RANDOM = new ThreadLocal<Random>() {
-        @Override
-        protected Random initialValue() {
-            return new Random();
-        }
-    };
+                                                                     @Override
+                                                                     protected Random initialValue() {
+                                                                         return new Random();
+                                                                     }
+                                                                 };
 
     static {
         String digits = "0123456789";
@@ -43,11 +45,14 @@ public final class CommonUtils {
      * <p>
      * Note that although we're processing streams, all the contents will be loaded and returned for this substitution.
      *
-     * @param original         the original {@code InputStream}
-     * @param variableResolver the variable resolver
+     * @param original
+     *            the original {@code InputStream}
+     * @param variableResolver
+     *            the variable resolver
      * @return a new {@code InputStream} with the variables replaced by their values,
-     * or the original if the {@code variableResolver} is {@code null}.
-     * @throws IOException error on reading the original InputStream.
+     *         or the original if the {@code variableResolver} is {@code null}.
+     * @throws IOException
+     *             error on reading the original InputStream.
      */
     public static InputStream replaceMacro(InputStream original,
                                            VariableResolver<String> variableResolver) throws IOException {

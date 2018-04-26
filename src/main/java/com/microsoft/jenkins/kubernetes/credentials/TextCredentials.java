@@ -6,19 +6,21 @@
 
 package com.microsoft.jenkins.kubernetes.credentials;
 
+import org.apache.commons.lang3.StringUtils;
+import org.kohsuke.stapler.DataBoundConstructor;
+import org.kohsuke.stapler.DataBoundSetter;
+import org.kohsuke.stapler.QueryParameter;
+
 import com.microsoft.jenkins.kubernetes.KubernetesClientWrapper;
 import com.microsoft.jenkins.kubernetes.Messages;
 import com.microsoft.jenkins.kubernetes.util.Constants;
+
 import hudson.Extension;
 import hudson.FilePath;
 import hudson.model.AbstractDescribableImpl;
 import hudson.model.Descriptor;
 import hudson.model.Item;
 import hudson.util.FormValidation;
-import org.apache.commons.lang3.StringUtils;
-import org.kohsuke.stapler.DataBoundConstructor;
-import org.kohsuke.stapler.DataBoundSetter;
-import org.kohsuke.stapler.QueryParameter;
 
 /**
  * @deprecated Use {@link KubeconfigCredentials}.
@@ -74,7 +76,7 @@ public class TextCredentials extends AbstractDescribableImpl<TextCredentials> im
     @Override
     public ClientWrapperFactory buildClientWrapperFactory(Item owner) {
         return new ClientWrapperFactoryImpl(
-                getServerUrl(), getCertificateAuthorityData(), getClientCertificateData(), getClientKeyData());
+            getServerUrl(), getCertificateAuthorityData(), getClientCertificateData(), getClientKeyData());
     }
 
     @Extension
@@ -98,10 +100,10 @@ public class TextCredentials extends AbstractDescribableImpl<TextCredentials> im
     private static class ClientWrapperFactoryImpl implements ClientWrapperFactory {
         private static final long serialVersionUID = 1L;
 
-        private final String serverUrl;
-        private final String certificateAuthorityData;
-        private final String clientCertificateData;
-        private final String clientKeyData;
+        private final String      serverUrl;
+        private final String      certificateAuthorityData;
+        private final String      clientCertificateData;
+        private final String      clientKeyData;
 
         ClientWrapperFactoryImpl(String serverUrl,
                                  String certificateAuthorityData,
@@ -116,7 +118,7 @@ public class TextCredentials extends AbstractDescribableImpl<TextCredentials> im
         @Override
         public KubernetesClientWrapper buildClient(FilePath workspace) throws Exception {
             return new KubernetesClientWrapper(
-                    serverUrl, certificateAuthorityData, clientCertificateData, clientKeyData);
+                serverUrl, certificateAuthorityData, clientCertificateData, clientKeyData);
         }
     }
 }

@@ -6,11 +6,28 @@
 
 package com.microsoft.jenkins.kubernetes;
 
+import static com.google.common.base.Preconditions.checkNotNull;
+
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.PrintStream;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+
+import org.apache.commons.io.IOUtils;
+import org.apache.commons.lang.StringUtils;
+
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Preconditions;
 import com.microsoft.jenkins.kubernetes.credentials.ResolvedDockerRegistryEndpoint;
 import com.microsoft.jenkins.kubernetes.util.CommonUtils;
 import com.microsoft.jenkins.kubernetes.util.Constants;
 import com.microsoft.jenkins.kubernetes.util.DockerConfigBuilder;
+
 import hudson.EnvVars;
 import hudson.FilePath;
 import hudson.util.VariableResolver;
@@ -33,27 +50,12 @@ import io.fabric8.kubernetes.client.ConfigBuilder;
 import io.fabric8.kubernetes.client.DefaultKubernetesClient;
 import io.fabric8.kubernetes.client.KubernetesClient;
 import io.fabric8.kubernetes.client.utils.Utils;
-import org.apache.commons.io.IOUtils;
-import org.apache.commons.lang.StringUtils;
-
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.PrintStream;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
-
-import static com.google.common.base.Preconditions.checkNotNull;
-import static com.google.common.base.Preconditions.checkState;
 
 public class KubernetesClientWrapper {
-    private final KubernetesClient client;
-    private PrintStream logger = System.out;
+    private final KubernetesClient   client;
+    private PrintStream              logger                = System.out;
     private VariableResolver<String> variableResolver;
-    private ResourceUpdateMonitor resourceUpdateMonitor = ResourceUpdateMonitor.NOOP;
+    private ResourceUpdateMonitor    resourceUpdateMonitor = ResourceUpdateMonitor.NOOP;
 
     @VisibleForTesting
     KubernetesClientWrapper(KubernetesClient client) {
@@ -79,12 +81,12 @@ public class KubernetesClientWrapper {
                                    String clientCertificateData,
                                    String clientKeyData) {
         Config config = new ConfigBuilder()
-                .withMasterUrl(server)
-                .withCaCertData(certificateAuthorityData)
-                .withClientCertData(clientCertificateData)
-                .withClientKeyData(clientKeyData)
-                .withWebsocketPingInterval(0)
-                .build();
+            .withMasterUrl(server)
+            .withCaCertData(certificateAuthorityData)
+            .withClientCertData(clientCertificateData)
+            .withClientKeyData(clientKeyData)
+            .withWebsocketPingInterval(0)
+            .build();
         client = new DefaultKubernetesClient(config);
     }
 
@@ -120,13 +122,15 @@ public class KubernetesClientWrapper {
         return this;
     }
 
-
     /**
      * Apply Kubernetes configurations through the given Kubernetes client.
      *
-     * @param configFiles The configuration files to be deployed
-     * @throws IOException          exception on IO
-     * @throws InterruptedException interruption happened during blocking IO operations
+     * @param configFiles
+     *            The configuration files to be deployed
+     * @throws IOException
+     *             exception on IO
+     * @throws InterruptedException
+     *             interruption happened during blocking IO operations
      */
     public void apply(FilePath[] configFiles) throws IOException, InterruptedException {
         for (FilePath path : configFiles) {
@@ -181,18 +185,22 @@ public class KubernetesClientWrapper {
      * <p>
      * This can be used by the Pods later to pull images from the private container registry.
      *
-     * @param kubernetesNamespace The namespace in which the Secret should be created / updated
-     * @param secretName          The name of the Secret
-     * @param credentials         All the configured credentials
-     * @throws IOException exception on IO
+     * @param kubernetesNamespace
+     *            The namespace in which the Secret should be created / updated
+     * @param secretName
+     *            The name of the Secret
+     * @param credentials
+     *            All the configured credentials
+     * @throws IOException
+     *             exception on IO
      * @see <a href="https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry">
-     * Pull an Image from a Private Registry
-     * </a>
+     *      Pull an Image from a Private Registry
+     *      </a>
      */
     public void createOrReplaceSecrets(
-            String kubernetesNamespace,
-            String secretName,
-            List<ResolvedDockerRegistryEndpoint> credentials) throws IOException {
+                                       String kubernetesNamespace,
+                                       String secretName,
+                                       List<ResolvedDockerRegistryEndpoint> credentials) throws IOException {
         log(Messages.KubernetesClientWrapper_prepareSecretsWithName(secretName));
 
         DockerConfigBuilder dockerConfigBuilder = new DockerConfigBuilder(credentials);
@@ -201,13 +209,13 @@ public class KubernetesClientWrapper {
         Map<String, String> data = new HashMap<>();
         data.put(".dockercfg", dockercfg);
         Secret secret = new SecretBuilder()
-                .withNewMetadata()
-                .withName(secretName)
-                .withNamespace(kubernetesNamespace)
-                .endMetadata()
-                .withData(data)
-                .withType("kubernetes.io/dockercfg")
-                .build();
+            .withNewMetadata()
+            .withName(secretName)
+            .withNamespace(kubernetesNamespace)
+            .endMetadata()
+            .withData(data)
+            .withType("kubernetes.io/dockercfg")
+            .build();
 
         new SecretUpdater(secret).createOrApply();
     }
@@ -218,16 +226,14 @@ public class KubernetesClientWrapper {
      * This requires to update the system property. In order to avoid changing the system property at the same time
      * from multiple running jobs, the method is marked as synchronized.
      *
-     * @param kubeconfig the kubeconfig contents
+     * @param kubeconfig
+     *            the kubeconfig contents
      * @return the config that can be used to build {@link KubernetesClient}
      */
     public static synchronized Config configFromKubeconfig(String kubeconfig) {
-        String originalTryKubeconfig =
-                Utils.getSystemPropertyOrEnvVar(Config.KUBERNETES_AUTH_TRYKUBECONFIG_SYSTEM_PROPERTY);
-        String originalTryServiceAccount =
-                Utils.getSystemPropertyOrEnvVar(Config.KUBERNETES_AUTH_TRYSERVICEACCOUNT_SYSTEM_PROPERTY);
-        String originalTryNamespacePath =
-                Utils.getSystemPropertyOrEnvVar(Config.KUBERNETES_TRYNAMESPACE_PATH_SYSTEM_PROPERTY);
+        String originalTryKubeconfig = Utils.getSystemPropertyOrEnvVar(Config.KUBERNETES_AUTH_TRYKUBECONFIG_SYSTEM_PROPERTY);
+        String originalTryServiceAccount = Utils.getSystemPropertyOrEnvVar(Config.KUBERNETES_AUTH_TRYSERVICEACCOUNT_SYSTEM_PROPERTY);
+        String originalTryNamespacePath = Utils.getSystemPropertyOrEnvVar(Config.KUBERNETES_TRYNAMESPACE_PATH_SYSTEM_PROPERTY);
         try {
             System.setProperty(Config.KUBERNETES_AUTH_TRYKUBECONFIG_SYSTEM_PROPERTY, "false");
             System.setProperty(Config.KUBERNETES_AUTH_TRYSERVICEACCOUNT_SYSTEM_PROPERTY, "false");
@@ -267,7 +273,7 @@ public class KubernetesClientWrapper {
             name = UUID.randomUUID().toString();
         }
         name = Constants.KUBERNETES_SECRET_NAME_PREFIX
-                + name.replaceAll("[^0-9a-zA-Z]", "-").toLowerCase();
+               + name.replaceAll("[^0-9a-zA-Z]", "-").toLowerCase();
         if (name.length() > Constants.KUBERNETES_NAME_LENGTH_LIMIT) {
             name = name.substring(0, Constants.KUBERNETES_NAME_LENGTH_LIMIT);
         }
@@ -297,8 +303,8 @@ public class KubernetesClientWrapper {
         ResourceUpdater(T resource) {
             checkNotNull(resource);
             this.resource = resource;
-            checkState(StringUtils.isNotBlank(getName()),
-                    Messages.KubernetesClientWrapper_noName(), getKind(), resource);
+            Preconditions.checkState(StringUtils.isNotBlank(getName()),
+                Messages.KubernetesClientWrapper_noName(), getKind(), resource);
         }
 
         final String getNamespace() {
@@ -338,7 +344,8 @@ public class KubernetesClientWrapper {
          * checked), or some one created the resource after we checked and before we created, the method fails with
          * exception.
          *
-         * @throws IOException if we cannot find the resource in the cluster when we apply the configuration
+         * @throws IOException
+         *             if we cannot find the resource in the cluster when we apply the configuration
          */
         final void createOrApply() throws IOException {
             T original = getCurrentResource();
@@ -348,7 +355,7 @@ public class KubernetesClientWrapper {
                 updated = applyResource(original, current);
                 if (updated == null) {
                     throw new IOException(Messages.KubernetesClientWrapper_resourceNotFound(
-                            getKind(), current.getMetadata().getName()));
+                        getKind(), current.getMetadata().getName()));
                 }
                 logApplied(updated);
             } else {
@@ -383,33 +390,33 @@ public class KubernetesClientWrapper {
         @Override
         Deployment getCurrentResource() {
             return client
-                    .extensions()
-                    .deployments()
-                    .inNamespace(getNamespace())
-                    .withName(getName())
-                    .get();
+                .extensions()
+                .deployments()
+                .inNamespace(getNamespace())
+                .withName(getName())
+                .get();
         }
 
         @Override
         Deployment applyResource(Deployment original, Deployment current) {
             return client
-                    .extensions()
-                    .deployments()
-                    .inNamespace(getNamespace())
-                    .withName(current.getMetadata().getName())
-                    .edit()
-                    .withMetadata(current.getMetadata())
-                    .withSpec(current.getSpec())
-                    .done();
+                .extensions()
+                .deployments()
+                .inNamespace(getNamespace())
+                .withName(current.getMetadata().getName())
+                .edit()
+                .withMetadata(current.getMetadata())
+                .withSpec(current.getSpec())
+                .done();
         }
 
         @Override
         Deployment createResource(Deployment current) {
             return client
-                    .extensions()
-                    .deployments()
-                    .inNamespace(getNamespace())
-                    .create(current);
+                .extensions()
+                .deployments()
+                .inNamespace(getNamespace())
+                .create(current);
         }
 
         @Override
@@ -426,10 +433,10 @@ public class KubernetesClientWrapper {
         @Override
         Service getCurrentResource() {
             return client
-                    .services()
-                    .inNamespace(getNamespace())
-                    .withName(getName())
-                    .get();
+                .services()
+                .inNamespace(getNamespace())
+                .withName(getName())
+                .get();
         }
 
         @Override
@@ -473,20 +480,20 @@ public class KubernetesClientWrapper {
             current.getSpec().setPorts(currentPorts);
 
             return client.services()
-                    .inNamespace(getNamespace())
-                    .withName(original.getMetadata().getName())
-                    .edit()
-                    .withMetadata(current.getMetadata())
-                    .withSpec(current.getSpec())
-                    .done();
+                .inNamespace(getNamespace())
+                .withName(original.getMetadata().getName())
+                .edit()
+                .withMetadata(current.getMetadata())
+                .withSpec(current.getSpec())
+                .done();
         }
 
         @Override
         Service createResource(Service current) {
             return client
-                    .services()
-                    .inNamespace(getNamespace())
-                    .create(current);
+                .services()
+                .inNamespace(getNamespace())
+                .create(current);
         }
 
         @Override
@@ -503,33 +510,33 @@ public class KubernetesClientWrapper {
         @Override
         Ingress getCurrentResource() {
             return client
-                    .extensions()
-                    .ingresses()
-                    .inNamespace(getNamespace())
-                    .withName(getName())
-                    .get();
+                .extensions()
+                .ingresses()
+                .inNamespace(getNamespace())
+                .withName(getName())
+                .get();
         }
 
         @Override
         Ingress applyResource(Ingress original, Ingress current) {
             return client
-                    .extensions()
-                    .ingresses()
-                    .inNamespace(getNamespace())
-                    .withName(current.getMetadata().getName())
-                    .edit()
-                    .withMetadata(current.getMetadata())
-                    .withSpec(current.getSpec())
-                    .done();
+                .extensions()
+                .ingresses()
+                .inNamespace(getNamespace())
+                .withName(current.getMetadata().getName())
+                .edit()
+                .withMetadata(current.getMetadata())
+                .withSpec(current.getSpec())
+                .done();
         }
 
         @Override
         Ingress createResource(Ingress current) {
             return client
-                    .extensions()
-                    .ingresses()
-                    .inNamespace(getNamespace())
-                    .create(current);
+                .extensions()
+                .ingresses()
+                .inNamespace(getNamespace())
+                .create(current);
         }
 
         @Override
@@ -546,30 +553,30 @@ public class KubernetesClientWrapper {
         @Override
         ReplicationController getCurrentResource() {
             return client
-                    .replicationControllers()
-                    .inNamespace(getNamespace())
-                    .withName(getName())
-                    .get();
+                .replicationControllers()
+                .inNamespace(getNamespace())
+                .withName(getName())
+                .get();
         }
 
         @Override
         ReplicationController applyResource(ReplicationController original, ReplicationController current) {
             return client
-                    .replicationControllers()
-                    .inNamespace(getNamespace())
-                    .withName(current.getMetadata().getName())
-                    .edit()
-                    .withMetadata(current.getMetadata())
-                    .withSpec(current.getSpec())
-                    .done();
+                .replicationControllers()
+                .inNamespace(getNamespace())
+                .withName(current.getMetadata().getName())
+                .edit()
+                .withMetadata(current.getMetadata())
+                .withSpec(current.getSpec())
+                .done();
         }
 
         @Override
         ReplicationController createResource(ReplicationController current) {
             return client
-                    .replicationControllers()
-                    .inNamespace(getNamespace())
-                    .create(current);
+                .replicationControllers()
+                .inNamespace(getNamespace())
+                .create(current);
         }
 
         @Override
@@ -586,33 +593,33 @@ public class KubernetesClientWrapper {
         @Override
         ReplicaSet getCurrentResource() {
             return client
-                    .extensions()
-                    .replicaSets()
-                    .inNamespace(getNamespace())
-                    .withName(getName())
-                    .get();
+                .extensions()
+                .replicaSets()
+                .inNamespace(getNamespace())
+                .withName(getName())
+                .get();
         }
 
         @Override
         ReplicaSet applyResource(ReplicaSet original, ReplicaSet current) {
             return client
-                    .extensions()
-                    .replicaSets()
-                    .inNamespace(getNamespace())
-                    .withName(current.getMetadata().getName())
-                    .edit()
-                    .withMetadata(current.getMetadata())
-                    .withSpec(current.getSpec())
-                    .done();
+                .extensions()
+                .replicaSets()
+                .inNamespace(getNamespace())
+                .withName(current.getMetadata().getName())
+                .edit()
+                .withMetadata(current.getMetadata())
+                .withSpec(current.getSpec())
+                .done();
         }
 
         @Override
         ReplicaSet createResource(ReplicaSet current) {
             return client
-                    .extensions()
-                    .replicaSets()
-                    .inNamespace(getNamespace())
-                    .create(current);
+                .extensions()
+                .replicaSets()
+                .inNamespace(getNamespace())
+                .create(current);
         }
 
         @Override
@@ -629,33 +636,33 @@ public class KubernetesClientWrapper {
         @Override
         DaemonSet getCurrentResource() {
             return client
-                    .extensions()
-                    .daemonSets()
-                    .inNamespace(getNamespace())
-                    .withName(getName())
-                    .get();
+                .extensions()
+                .daemonSets()
+                .inNamespace(getNamespace())
+                .withName(getName())
+                .get();
         }
 
         @Override
         DaemonSet applyResource(DaemonSet original, DaemonSet current) {
             return client
-                    .extensions()
-                    .daemonSets()
-                    .inNamespace(getNamespace())
-                    .withName(current.getMetadata().getName())
-                    .edit()
-                    .withMetadata(current.getMetadata())
-                    .withSpec(current.getSpec())
-                    .done();
+                .extensions()
+                .daemonSets()
+                .inNamespace(getNamespace())
+                .withName(current.getMetadata().getName())
+                .edit()
+                .withMetadata(current.getMetadata())
+                .withSpec(current.getSpec())
+                .done();
         }
 
         @Override
         DaemonSet createResource(DaemonSet current) {
             return client
-                    .extensions()
-                    .daemonSets()
-                    .inNamespace(getNamespace())
-                    .create(current);
+                .extensions()
+                .daemonSets()
+                .inNamespace(getNamespace())
+                .create(current);
         }
 
         @Override
@@ -672,33 +679,33 @@ public class KubernetesClientWrapper {
         @Override
         Job getCurrentResource() {
             return client
-                    .extensions()
-                    .jobs()
-                    .inNamespace(getNamespace())
-                    .withName(getName())
-                    .get();
+                .extensions()
+                .jobs()
+                .inNamespace(getNamespace())
+                .withName(getName())
+                .get();
         }
 
         @Override
         Job applyResource(Job original, Job current) {
             return client
-                    .extensions()
-                    .jobs()
-                    .inNamespace(getNamespace())
-                    .withName(current.getMetadata().getName())
-                    .edit()
-                    .withMetadata(current.getMetadata())
-                    .withSpec(current.getSpec())
-                    .done();
+                .extensions()
+                .jobs()
+                .inNamespace(getNamespace())
+                .withName(current.getMetadata().getName())
+                .edit()
+                .withMetadata(current.getMetadata())
+                .withSpec(current.getSpec())
+                .done();
         }
 
         @Override
         Job createResource(Job current) {
             return client
-                    .extensions()
-                    .jobs()
-                    .inNamespace(getNamespace())
-                    .create(current);
+                .extensions()
+                .jobs()
+                .inNamespace(getNamespace())
+                .create(current);
         }
 
         @Override
@@ -715,30 +722,30 @@ public class KubernetesClientWrapper {
         @Override
         Pod getCurrentResource() {
             return client
-                    .pods()
-                    .inNamespace(getNamespace())
-                    .withName(getName())
-                    .get();
+                .pods()
+                .inNamespace(getNamespace())
+                .withName(getName())
+                .get();
         }
 
         @Override
         Pod applyResource(Pod original, Pod current) {
             return client
-                    .pods()
-                    .inNamespace(getNamespace())
-                    .withName(current.getMetadata().getName())
-                    .edit()
-                    .withMetadata(current.getMetadata())
-                    .withSpec(current.getSpec())
-                    .done();
+                .pods()
+                .inNamespace(getNamespace())
+                .withName(current.getMetadata().getName())
+                .edit()
+                .withMetadata(current.getMetadata())
+                .withSpec(current.getSpec())
+                .done();
         }
 
         @Override
         Pod createResource(Pod current) {
             return client
-                    .pods()
-                    .inNamespace(getNamespace())
-                    .create(current);
+                .pods()
+                .inNamespace(getNamespace())
+                .create(current);
         }
 
         @Override
@@ -755,30 +762,30 @@ public class KubernetesClientWrapper {
         @Override
         ConfigMap getCurrentResource() {
             return client
-                    .configMaps()
-                    .inNamespace(getNamespace())
-                    .withName(getName())
-                    .get();
+                .configMaps()
+                .inNamespace(getNamespace())
+                .withName(getName())
+                .get();
         }
 
         @Override
         ConfigMap applyResource(ConfigMap original, ConfigMap current) {
             return client
-                    .configMaps()
-                    .inNamespace(getNamespace())
-                    .withName(current.getMetadata().getName())
-                    .edit()
-                    .withMetadata(current.getMetadata())
-                    .withData(current.getData())
-                    .done();
+                .configMaps()
+                .inNamespace(getNamespace())
+                .withName(current.getMetadata().getName())
+                .edit()
+                .withMetadata(current.getMetadata())
+                .withData(current.getData())
+                .done();
         }
 
         @Override
         ConfigMap createResource(ConfigMap current) {
             return client
-                    .configMaps()
-                    .inNamespace(getNamespace())
-                    .create(current);
+                .configMaps()
+                .inNamespace(getNamespace())
+                .create(current);
         }
 
         @Override
@@ -795,32 +802,32 @@ public class KubernetesClientWrapper {
         @Override
         Secret getCurrentResource() {
             return client
-                    .secrets()
-                    .inNamespace(getNamespace())
-                    .withName(getName())
-                    .get();
+                .secrets()
+                .inNamespace(getNamespace())
+                .withName(getName())
+                .get();
         }
 
         @Override
         Secret applyResource(Secret original, Secret current) {
             return client
-                    .secrets()
-                    .inNamespace(getNamespace())
-                    .withName(current.getMetadata().getName())
-                    .edit()
-                    .withMetadata(current.getMetadata())
-                    .withData(current.getData())
-                    .withStringData(current.getStringData())
-                    .withType(current.getType())
-                    .done();
+                .secrets()
+                .inNamespace(getNamespace())
+                .withName(current.getMetadata().getName())
+                .edit()
+                .withMetadata(current.getMetadata())
+                .withData(current.getData())
+                .withStringData(current.getStringData())
+                .withType(current.getType())
+                .done();
         }
 
         @Override
         Secret createResource(Secret current) {
             return client
-                    .secrets()
-                    .inNamespace(getNamespace())
-                    .create(current);
+                .secrets()
+                .inNamespace(getNamespace())
+                .create(current);
         }
 
         @Override

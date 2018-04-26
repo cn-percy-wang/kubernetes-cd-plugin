@@ -6,32 +6,33 @@
 
 package com.microsoft.jenkins.kubernetes.credentials;
 
+import org.apache.commons.lang3.StringUtils;
+import org.kohsuke.stapler.DataBoundConstructor;
+import org.kohsuke.stapler.DataBoundSetter;
+import org.kohsuke.stapler.QueryParameter;
+
 import com.microsoft.jenkins.kubernetes.KubernetesClientWrapper;
 import com.microsoft.jenkins.kubernetes.Messages;
+
 import hudson.Extension;
 import hudson.FilePath;
 import hudson.model.AbstractDescribableImpl;
 import hudson.model.Descriptor;
 import hudson.model.Item;
 import hudson.util.FormValidation;
-import org.apache.commons.lang3.StringUtils;
-import org.kohsuke.stapler.DataBoundConstructor;
-import org.kohsuke.stapler.DataBoundSetter;
-import org.kohsuke.stapler.QueryParameter;
 
 /**
  * @deprecated Use {@link KubeconfigCredentials}.
  */
 @Deprecated
 public class ConfigFileCredentials
-        extends AbstractDescribableImpl<ConfigFileCredentials>
-        implements ClientWrapperFactory.Builder {
+                                   extends AbstractDescribableImpl<ConfigFileCredentials>
+                                   implements ClientWrapperFactory.Builder {
 
     private String path;
 
     @DataBoundConstructor
-    public ConfigFileCredentials() {
-    }
+    public ConfigFileCredentials() {}
 
     public String getPath() {
         return path;
@@ -60,7 +61,7 @@ public class ConfigFileCredentials
     private static class ClientWrapperFactoryImpl implements ClientWrapperFactory {
         private static final long serialVersionUID = 1L;
 
-        private final String configFilePath;
+        private final String      configFilePath;
 
         ClientWrapperFactoryImpl(String configFilePath) {
             this.configFilePath = configFilePath;
@@ -71,7 +72,7 @@ public class ConfigFileCredentials
             FilePath configFile = workspace.child(configFilePath);
             if (!configFile.exists()) {
                 throw new IllegalArgumentException(
-                        Messages.ConfigFileCredentials_configFileNotFound(configFilePath, workspace));
+                    Messages.ConfigFileCredentials_configFileNotFound(configFilePath, workspace));
             }
             return new KubernetesClientWrapper(configFile.getRemote());
         }
